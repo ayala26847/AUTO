@@ -1,6 +1,7 @@
 export interface Organization {
   id: string
   name: string
+  join_code?: string
   created_at: string
 }
 
@@ -65,6 +66,7 @@ export interface TimeLog {
   task_id: string | null
   hours: number
   description: string
+  attribution: 'self' | 'partner' | 'shared'
   created_at: string
   project?: Project
   user?: User

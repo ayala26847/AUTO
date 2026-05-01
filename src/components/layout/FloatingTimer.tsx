@@ -27,7 +27,7 @@ export default function FloatingTimer() {
         size="icon"
         variant="ghost"
         className="h-7 w-7 rounded-full hover:bg-blue-700 text-white"
-        onClick={handleStop}
+        onClick={() => handleStop('self')}
         disabled={isStopping}
       >
         <Square className="h-3 w-3 fill-current" />

@@ -6,7 +6,7 @@ import { useLang } from '@/hooks/useLang'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { formatCurrency, formatHours, calcEHR, calcPartnerPayout } from '@/lib/utils'
+import { formatCurrency, formatHours, calcEHR, calcPartnerPayout, resolveAttributedHours } from '@/lib/utils'
 import type { Project, TimeLog, Expense } from '@/types'
 import type { User } from '@/types'
 
@@ -66,7 +66,11 @@ export default function ReportsPage() {
           let totalPayout = 0
           let totalHours = 0
           for (const r of rpts) {
-            const mHours = r.timeLogs.filter((t) => t.user_id === m.id).reduce((h, t) => h + t.hours, 0)
+            const mHours = r.timeLogs.reduce((sum, log) => {
+              const resolved = resolveAttributedHours(log, members)
+              const entry = resolved.find((e) => e.userId === m.id)
+              return sum + (entry?.hours ?? 0)
+            }, 0)
             if (mHours === 0) continue
             totalHours += mHours
             const payout =

@@ -10,7 +10,7 @@ import {
 import { useAuthStore } from '@/stores/authStore'
 import { useLang } from '@/hooks/useLang'
 import { useTimer } from '@/hooks/useTimer'
-import type { Task } from '@/types'
+import type { Task, TimeLog } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -23,9 +23,15 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { formatCurrency, formatHours, calcEHR, calcPartnerPayout } from '@/lib/utils'
+import { formatCurrency, formatHours, calcEHR, calcPartnerPayout, resolveAttributedHours } from '@/lib/utils'
 
 const KANBAN_COLS: Task['status'][] = ['Backlog', 'In Progress', 'Review', 'Done']
+
+function AttributionBadge({ log, tt }: { log: TimeLog; tt: { attrBadgePartner: string; attrBadgeShared: string } }) {
+  if (log.attribution === 'partner') return <Badge variant="warning" className="text-xs ms-1">{tt.attrBadgePartner}</Badge>
+  if (log.attribution === 'shared') return <Badge variant="default" className="text-xs ms-1">{tt.attrBadgeShared}</Badge>
+  return null
+}
 
 function TaskDialog({
   open, onClose, projectId, orgId,
@@ -39,7 +45,7 @@ function TaskDialog({
   const { tr } = useLang()
   const [title, setTitle] = useState('')
   const [status, setStatus] = useState<Task['status']>('Backlog')
-  const [assignedTo, setAssignedTo] = useState('')
+  const [assignedTo, setAssignedTo] = useState('none')
   const [dueDate, setDueDate] = useState('')
 
   const { data: members = [] } = useQuery({
@@ -189,13 +195,17 @@ export default function ProjectDetailPage() {
   const ehr = calcEHR(netProfit, totalHours)
 
   const partnerBreakdown = members.map((m) => {
-    const hours = timeLogs.filter((t) => t.user_id === m.id).reduce((h, t) => h + t.hours, 0)
+    const hours = timeLogs.reduce((sum, log) => {
+      const resolved = resolveAttributedHours(log, members)
+      const entry = resolved.find((r) => r.userId === m.id)
+      return sum + (entry?.hours ?? 0)
+    }, 0)
     const payout =
       project.pricing_type === 'Fixed'
         ? calcPartnerPayout(hours, totalHours, netProfit)
         : hours * project.budget
     return { member: m, hours, payout }
-  }).filter((p) => p.hours > 0)
+  }).filter((pb) => pb.hours > 0)
 
   return (
     <div className="p-6 space-y-6">
@@ -315,7 +325,10 @@ export default function ProjectDetailPage() {
                   {timeLogs.map((log) => (
                     <div key={log.id} className="py-2 flex items-center justify-between">
                       <div>
-                        <p className="font-medium">{log.user?.name ?? pd.unknown}</p>
+                        <div className="flex items-center gap-1">
+                          <p className="font-medium">{log.user?.name ?? pd.unknown}</p>
+                          <AttributionBadge log={log} tt={tr.timeTracker} />
+                        </div>
                         {log.description && <p className="text-xs text-muted-foreground">{log.description}</p>}
                       </div>
                       <div className="text-end">

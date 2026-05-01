@@ -225,3 +225,65 @@ begin;
   drop publication if exists supabase_realtime;
   create publication supabase_realtime for table active_timers, time_logs;
 commit;
+
+-- ════════════════════════════════════════════════════════════
+-- MIGRATION: Feature 1 — Org Join Code
+-- ════════════════════════════════════════════════════════════
+
+alter table organizations add column if not exists join_code text unique;
+
+update organizations
+  set join_code = upper(substring(replace(gen_random_uuid()::text, '-', ''), 1, 8))
+  where join_code is null;
+
+alter table organizations
+  alter column join_code set default upper(substring(replace(gen_random_uuid()::text, '-', ''), 1, 8));
+
+-- ════════════════════════════════════════════════════════════
+-- MIGRATION: Feature 2 — Time Log Attribution
+-- ════════════════════════════════════════════════════════════
+
+alter table time_logs
+  add column if not exists attribution text not null default 'self'
+  check (attribution in ('self', 'partner', 'shared'));
+
+-- ════════════════════════════════════════════════════════════
+-- Updated setup_workspace RPC (supports join_code)
+-- ════════════════════════════════════════════════════════════
+
+create or replace function setup_workspace(
+  p_org_name text default null,
+  p_user_name text default '',
+  p_join_code text default null
+)
+returns json language plpgsql security definer set search_path = public as $$
+declare
+  v_org organizations%rowtype;
+  v_user users%rowtype;
+begin
+  if auth.uid() is null then raise exception 'Not authenticated'; end if;
+
+  if p_join_code is not null then
+    select * into v_org from organizations where upper(join_code) = upper(p_join_code);
+    if not found then raise exception 'Invalid join code'; end if;
+  else
+    insert into organizations (name) values (p_org_name) returning * into v_org;
+  end if;
+
+  insert into users (id, org_id, name, email, role, internal_rate)
+  values (
+    auth.uid(),
+    v_org.id,
+    p_user_name,
+    coalesce((select email from auth.users where id = auth.uid()), ''),
+    case when p_join_code is null then 'Admin' else 'Member' end,
+    0
+  )
+  returning * into v_user;
+
+  return json_build_object('organization', row_to_json(v_org), 'user', row_to_json(v_user));
+end;
+$$;
+
+grant execute on function setup_workspace(text, text, text) to authenticated, anon;
+notify pgrst, 'reload schema';

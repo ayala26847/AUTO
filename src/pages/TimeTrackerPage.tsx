@@ -8,10 +8,19 @@ import { useTimer } from '@/hooks/useTimer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { formatHours, formatCurrency } from '@/lib/utils'
+
+type Attribution = 'self' | 'partner' | 'shared'
+
+function AttributionBadge({ attribution, tt }: { attribution: Attribution; tt: { attrBadgePartner: string; attrBadgeShared: string } }) {
+  if (attribution === 'partner') return <Badge variant="warning" className="text-xs">{tt.attrBadgePartner}</Badge>
+  if (attribution === 'shared') return <Badge variant="default" className="text-xs">{tt.attrBadgeShared}</Badge>
+  return null
+}
 
 export default function TimeTrackerPage() {
   const { organization, user } = useAuthStore()
@@ -20,20 +29,47 @@ export default function TimeTrackerPage() {
   const qc = useQueryClient()
   const { activeTimer, elapsedSeconds, isRunning, handleStart, handleStop, isStarting, isStopping } = useTimer()
   const [selectedProject, setSelectedProject] = useState('')
+  const [stopAttribution, setStopAttribution] = useState<Attribution>('self')
   const [manualHours, setManualHours] = useState('')
   const [manualDesc, setManualDesc] = useState('')
   const [manualProject, setManualProject] = useState('')
+  const [manualAttribution, setManualAttribution] = useState<Attribution>('self')
   const { data: projects = [] } = useQuery({ queryKey: ['projects', orgId], queryFn: () => fetchProjects(orgId), enabled: !!orgId })
   const { data: timeLogs = [] } = useQuery({ queryKey: ['time-logs', orgId], queryFn: () => fetchTimeLogs(orgId), enabled: !!orgId })
-  const manualLogMutation = useMutation({ mutationFn: insertTimeLog, onSuccess: () => { qc.invalidateQueries({ queryKey: ['time-logs'] }); setManualHours(''); setManualDesc(''); setManualProject('') } })
+  const manualLogMutation = useMutation({
+    mutationFn: insertTimeLog,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['time-logs'] })
+      setManualHours('')
+      setManualDesc('')
+      setManualProject('')
+      setManualAttribution('self')
+    },
+  })
   const deleteLogMutation = useMutation({ mutationFn: deleteTimeLog, onSuccess: () => qc.invalidateQueries({ queryKey: ['time-logs'] }) })
   const h = Math.floor(elapsedSeconds / 3600), m = Math.floor((elapsedSeconds % 3600) / 60), s = elapsedSeconds % 60
   const display = [h, m, s].map((v) => String(v).padStart(2, '0')).join(':')
+
   function handleManualLog() {
     if (!manualProject || !manualHours || !user || !organization) return
-    manualLogMutation.mutate({ org_id: organization.id, project_id: manualProject, user_id: user.id, task_id: null, hours: parseFloat(manualHours), description: manualDesc })
+    manualLogMutation.mutate({
+      org_id: organization.id,
+      project_id: manualProject,
+      user_id: user.id,
+      task_id: null,
+      hours: parseFloat(manualHours),
+      description: manualDesc,
+      attribution: manualAttribution,
+    })
   }
+
   const tt = tr.timeTracker
+  const attrOptions: { value: Attribution; label: string }[] = [
+    { value: 'self', label: tt.attrSelf },
+    { value: 'partner', label: tt.attrPartner },
+    { value: 'shared', label: tt.attrShared },
+  ]
+
   return (
     <div className="p-6 space-y-6">
       <div><h1 className="text-2xl font-bold">{tt.title}</h1><p className="text-muted-foreground text-sm">{tt.subtitle}</p></div>
@@ -46,7 +82,14 @@ export default function TimeTrackerPage() {
                 <div className="text-5xl font-mono font-bold text-primary">{display}</div>
                 {activeTimer?.project && <p className="text-sm text-muted-foreground font-medium">{activeTimer.project.name}</p>}
                 <p className="text-xs text-amber-600">{tt.autoStop}</p>
-                <Button variant="destructive" className="w-full" size="lg" onClick={handleStop} disabled={isStopping}>
+                <div className="space-y-1 text-start">
+                  <Label className="text-xs">{tt.stopAttribution}</Label>
+                  <Select value={stopAttribution} onValueChange={(v) => setStopAttribution(v as Attribution)}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>{attrOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <Button variant="destructive" className="w-full" size="lg" onClick={() => handleStop(stopAttribution)} disabled={isStopping}>
                   <Square className="h-4 w-4 me-2" />{isStopping ? tt.stopping : tt.stopSave}
                 </Button>
               </div>
@@ -72,6 +115,13 @@ export default function TimeTrackerPage() {
             <div className="space-y-1"><Label>{tt.project}</Label><Select value={manualProject} onValueChange={setManualProject}><SelectTrigger><SelectValue placeholder={tt.selectProject} /></SelectTrigger><SelectContent>{projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></div>
             <div className="space-y-1"><Label>{tt.hours}</Label><Input type="number" step="0.25" min="0" placeholder={tt.hoursPlaceholder} value={manualHours} onChange={(e) => setManualHours(e.target.value)} /></div>
             <div className="space-y-1"><Label>{tr.common.description}</Label><Textarea placeholder={tt.whatWorked} value={manualDesc} onChange={(e) => setManualDesc(e.target.value)} rows={3} /></div>
+            <div className="space-y-1">
+              <Label>{tt.attribution}</Label>
+              <Select value={manualAttribution} onValueChange={(v) => setManualAttribution(v as Attribution)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{attrOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
             <Button className="w-full" onClick={handleManualLog} disabled={!manualProject || !manualHours || manualLogMutation.isPending}>
               <Plus className="h-4 w-4 me-2" />{manualLogMutation.isPending ? tt.savingLog : tt.logTime}
             </Button>
@@ -89,6 +139,7 @@ export default function TimeTrackerPage() {
                     <p className="font-medium truncate">{log.project?.name ?? tt.unknownProject}</p>
                     <p className="text-xs text-muted-foreground">{log.user?.name}</p>
                     {log.description && <p className="text-xs text-muted-foreground truncate">{log.description}</p>}
+                    <AttributionBadge attribution={log.attribution} tt={tt} />
                   </div>
                   <div className="text-end shrink-0">
                     <p className="font-mono font-semibold">{formatHours(log.hours)}</p>

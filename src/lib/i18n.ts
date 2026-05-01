@@ -39,6 +39,12 @@ const t = {
       orgPlaceholder: 'My Automation Agency',
       creating: 'Creating...',
       createOrg: 'Create Organization',
+      createNew: 'Create New Organization',
+      joinExisting: 'Join Existing Organization',
+      joinCode: 'Join Code',
+      joinCodePlaceholder: 'e.g. ABCD1234',
+      joining: 'Joining...',
+      joinOrg: 'Join Organization',
     },
     // Common
     common: {
@@ -153,6 +159,11 @@ const t = {
         Done: 'Done',
       },
     },
+    // Sidebar
+    sidebar: {
+      orgCode: 'Org Code',
+      copied: 'Copied!',
+    },
     // Time Tracker
     timeTracker: {
       title: 'Time Tracker',
@@ -174,6 +185,13 @@ const t = {
       recentLogs: 'Recent Time Logs',
       noLogs: 'No time logged yet.',
       unknownProject: 'Unknown project',
+      attribution: 'Attribute to',
+      attrSelf: 'Me',
+      attrPartner: 'Partner',
+      attrShared: 'Both of us — split equally',
+      attrBadgePartner: 'Partner',
+      attrBadgeShared: 'Shared ÷2',
+      stopAttribution: 'Attribute time to',
     },
     // Reports
     reports: {
@@ -227,6 +245,12 @@ const t = {
       orgPlaceholder: 'סוכנות האוטומציה שלי',
       creating: 'יוצר...',
       createOrg: 'יצירת ארגון',
+      createNew: 'צור ארגון חדש',
+      joinExisting: 'הצטרף לארגון קיים',
+      joinCode: 'קוד הצטרפות',
+      joinCodePlaceholder: 'לדוגמה ABCD1234',
+      joining: 'מצטרף...',
+      joinOrg: 'הצטרף לארגון',
     },
     common: {
       save: 'שמור',
@@ -335,6 +359,10 @@ const t = {
         Done: 'הושלם',
       },
     },
+    sidebar: {
+      orgCode: 'קוד ארגון',
+      copied: 'הועתק!',
+    },
     timeTracker: {
       title: 'מעקב זמן',
       subtitle: 'עקוב אחר זמן בזמן אמת או הזן ידנית',
@@ -355,6 +383,13 @@ const t = {
       recentLogs: 'דיווחי זמן אחרונים',
       noLogs: 'לא דווחו שעות עדיין.',
       unknownProject: 'פרויקט לא ידוע',
+      attribution: 'ייחוס ל',
+      attrSelf: 'אני',
+      attrPartner: 'שותף',
+      attrShared: 'שנינו — חלוקה שווה',
+      attrBadgePartner: 'שותף',
+      attrBadgeShared: 'משותף ÷2',
+      stopAttribution: 'ייחוס זמן ל',
     },
     reports: {
       title: 'דוחות וכספים',

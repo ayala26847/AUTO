@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import type { TimeLog, User } from '@/types'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -40,4 +41,21 @@ export function calcPartnerPayout(
   netProfit: number,
 ): number {
   return totalHours > 0 ? (individualHours / totalHours) * netProfit : 0
+}
+
+export function resolveAttributedHours(
+  log: TimeLog,
+  members: User[],
+): { userId: string; hours: number }[] {
+  if (log.attribution === 'self') {
+    return [{ userId: log.user_id, hours: log.hours }]
+  }
+  if (log.attribution === 'partner') {
+    const partner = members.find((m) => m.id !== log.user_id)
+    if (!partner) return [{ userId: log.user_id, hours: log.hours }]
+    return [{ userId: partner.id, hours: log.hours }]
+  }
+  // 'shared' — split equally among all members
+  const split = log.hours / (members.length || 1)
+  return members.map((m) => ({ userId: m.id, hours: split }))
 }

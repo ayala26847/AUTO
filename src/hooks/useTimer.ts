@@ -30,7 +30,7 @@ export function useTimer() {
       intervalRef.current = setInterval(() => {
         tick()
         if (elapsedSeconds >= AUTO_STOP_SECONDS) {
-          handleStop()
+          handleStop('self')
         }
       }, 1000)
     } else {
@@ -50,7 +50,7 @@ export function useTimer() {
   })
 
   const stopMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (attribution: 'self' | 'partner' | 'shared' = 'self') => {
       if (!activeTimer || !user || !organization) return
       const hours = elapsedSeconds / 3600
       await stopTimer(activeTimer.id)
@@ -61,6 +61,7 @@ export function useTimer() {
         task_id: activeTimer.task_id,
         hours: Math.round(hours * 100) / 100,
         description: '',
+        attribution,
       })
     },
     onSuccess: () => {
@@ -81,8 +82,8 @@ export function useTimer() {
     })
   }
 
-  async function handleStop() {
-    stopMutation.mutate()
+  function handleStop(attribution: 'self' | 'partner' | 'shared' = 'self') {
+    stopMutation.mutate(attribution)
   }
 
   return {

@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import type {
+  Organization,
   Client,
   Lead,
   Project,
@@ -9,6 +10,18 @@ import type {
   Expense,
   User,
 } from '@/types'
+
+// ── Organizations ─────────────────────────────────────────────────────────────
+
+export async function fetchOrganization(orgId: string): Promise<Organization> {
+  const { data, error } = await supabase
+    .from('organizations')
+    .select('*')
+    .eq('id', orgId)
+    .single()
+  if (error) throw error
+  return data as Organization
+}
 
 // ── Clients ──────────────────────────────────────────────────────────────────
 
