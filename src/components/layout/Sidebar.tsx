@@ -6,28 +6,33 @@ import {
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { useAuthStore } from '@/stores/authStore'
-
-const navItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/clients', icon: Users, label: 'Clients' },
-  { to: '/leads', icon: Briefcase, label: 'Leads' },
-  { to: '/projects', icon: FolderKanban, label: 'Projects' },
-  { to: '/time', icon: Clock, label: 'Time Tracker' },
-  { to: '/reports', icon: BarChart3, label: 'Reports' },
-]
+import { useLang } from '@/hooks/useLang'
+import { LangToggle } from '@/components/ui/lang-toggle'
 
 export default function Sidebar() {
   const { signOut } = useAuth()
   const { user, organization } = useAuthStore()
+  const { tr } = useLang()
+
+  const navItems = [
+    { to: '/', icon: LayoutDashboard, label: tr.nav.dashboard },
+    { to: '/clients', icon: Users, label: tr.nav.clients },
+    { to: '/leads', icon: Briefcase, label: tr.nav.leads },
+    { to: '/projects', icon: FolderKanban, label: tr.nav.projects },
+    { to: '/time', icon: Clock, label: tr.nav.timeTracker },
+    { to: '/reports', icon: BarChart3, label: tr.nav.reports },
+  ]
 
   return (
-    <aside className="w-60 min-h-screen bg-slate-900 text-slate-100 flex flex-col">
+    <aside className="w-60 min-h-screen bg-slate-900 text-slate-100 flex flex-col shrink-0">
       <div className="px-4 py-5 border-b border-slate-700">
         <div className="flex items-center gap-2">
-          <Building2 className="h-5 w-5 text-blue-400" />
-          <div className="min-w-0">
+          <Building2 className="h-5 w-5 text-blue-400 shrink-0" />
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold truncate">{organization?.name ?? 'AutoCRM'}</p>
-            <p className="text-xs text-slate-400 truncate">{user?.role}</p>
+            <p className="text-xs text-slate-400 truncate">
+              {user?.role ? tr.nav.role[user.role] : ''}
+            </p>
           </div>
         </div>
       </div>
@@ -53,8 +58,11 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="px-2 py-4 border-t border-slate-700">
-        <div className="px-3 py-2 mb-2">
+      <div className="px-2 py-4 border-t border-slate-700 space-y-2">
+        <div className="px-3 pb-1">
+          <LangToggle />
+        </div>
+        <div className="px-3 py-1">
           <p className="text-xs text-slate-400 truncate">{user?.name}</p>
           <p className="text-xs text-slate-500 truncate">{user?.email}</p>
         </div>
@@ -62,8 +70,8 @@ export default function Sidebar() {
           onClick={signOut}
           className="flex items-center gap-3 w-full px-3 py-2 rounded-md text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
         >
-          <LogOut className="h-4 w-4" />
-          Sign Out
+          <LogOut className="h-4 w-4 shrink-0" />
+          {tr.nav.signOut}
         </button>
       </div>
     </aside>

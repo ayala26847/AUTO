@@ -8,6 +8,7 @@ import {
   fetchOrgMembers,
 } from '@/lib/queries'
 import { useAuthStore } from '@/stores/authStore'
+import { useLang } from '@/hooks/useLang'
 import { useTimer } from '@/hooks/useTimer'
 import type { Task } from '@/types'
 import { Button } from '@/components/ui/button'
@@ -35,6 +36,7 @@ function TaskDialog({
   orgId: string
 }) {
   const qc = useQueryClient()
+  const { tr } = useLang()
   const [title, setTitle] = useState('')
   const [status, setStatus] = useState<Task['status']>('Backlog')
   const [assignedTo, setAssignedTo] = useState('')
@@ -60,48 +62,49 @@ function TaskDialog({
       org_id: orgId,
       title,
       status,
-      assigned_to: assignedTo || null,
+      assigned_to: assignedTo === 'none' || assignedTo === '' ? null : assignedTo,
       due_date: dueDate || null,
     })
   }
 
+  const pd = tr.projectDetail
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
-        <DialogHeader><DialogTitle>New Task</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{pd.newTask}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1">
-            <Label>Title</Label>
+            <Label>{pd.taskTitle}</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <Label>Status</Label>
+            <Label>{tr.common.status}</Label>
             <Select value={status} onValueChange={(v) => setStatus(v as Task['status'])}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {KANBAN_COLS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                {KANBAN_COLS.map((s) => <SelectItem key={s} value={s}>{pd.taskStatuses[s]}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
-            <Label>Assigned To</Label>
+            <Label>{pd.assignedTo}</Label>
             <Select value={assignedTo} onValueChange={setAssignedTo}>
-              <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={pd.unassigned} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Unassigned</SelectItem>
+                <SelectItem value="none">{pd.unassigned}</SelectItem>
                 {members.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
-            <Label>Due Date</Label>
+            <Label>{pd.dueDate}</Label>
             <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>{tr.common.cancel}</Button>
           <Button onClick={handleSave} disabled={!title.trim() || mutation.isPending}>
-            {mutation.isPending ? 'Saving...' : 'Add Task'}
+            {mutation.isPending ? pd.addingTask : pd.addTaskBtn}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -112,6 +115,7 @@ function TaskDialog({
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { organization } = useAuthStore()
+  const { tr } = useLang()
   const orgId = organization?.id ?? ''
   const qc = useQueryClient()
   const { handleStart, isRunning } = useTimer()
@@ -174,7 +178,10 @@ export default function ProjectDetailPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks', id] }),
   })
 
-  if (!project) return <div className="p-6 text-muted-foreground">Loading project...</div>
+  const pd = tr.projectDetail
+  const p = tr.projects
+
+  if (!project) return <div className="p-6 text-muted-foreground">{tr.common.loading}</div>
 
   const totalHours = timeLogs.reduce((h, t) => h + t.hours, 0)
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0)
@@ -198,37 +205,32 @@ export default function ProjectDetailPage() {
           <p className="text-muted-foreground text-sm">{project.client?.name}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline">{project.pricing_type}</Badge>
-          <Badge>{project.status}</Badge>
-          <Button
-            size="sm"
-            onClick={() => handleStart(project.id, null)}
-            disabled={isRunning}
-          >
-            <Play className="h-3 w-3 mr-1" />
-            {isRunning ? 'Timer Running' : 'Start Timer'}
+          <Badge variant="outline">{p.pricing[project.pricing_type]}</Badge>
+          <Badge>{p.statuses[project.status]}</Badge>
+          <Button size="sm" onClick={() => handleStart(project.id, null)} disabled={isRunning}>
+            <Play className="h-3 w-3 me-1" />
+            {isRunning ? pd.timerRunning : pd.startTimer}
           </Button>
         </div>
       </div>
 
-      {/* Financial Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
-          <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground">Budget</CardTitle></CardHeader>
+          <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground">{pd.budget}</CardTitle></CardHeader>
           <CardContent><p className="text-lg font-bold">{formatCurrency(project.budget)}</p></CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground">Total Hours</CardTitle></CardHeader>
+          <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground">{pd.totalHours}</CardTitle></CardHeader>
           <CardContent><p className="text-lg font-bold">{formatHours(totalHours)}</p></CardContent>
         </Card>
         {project.pricing_type === 'Fixed' && (
           <>
             <Card>
-              <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground">Net Profit</CardTitle></CardHeader>
+              <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground">{pd.netProfit}</CardTitle></CardHeader>
               <CardContent><p className="text-lg font-bold text-green-600">{formatCurrency(netProfit)}</p></CardContent>
             </Card>
             <Card>
-              <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground">EHR</CardTitle></CardHeader>
+              <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground">{pd.ehr}</CardTitle></CardHeader>
               <CardContent><p className="text-lg font-bold">{formatCurrency(ehr)}/hr</p></CardContent>
             </Card>
           </>
@@ -237,17 +239,16 @@ export default function ProjectDetailPage() {
 
       <Tabs defaultValue="kanban">
         <TabsList>
-          <TabsTrigger value="kanban">Kanban</TabsTrigger>
-          <TabsTrigger value="time">Time Logs</TabsTrigger>
-          <TabsTrigger value="financials">Financials</TabsTrigger>
+          <TabsTrigger value="kanban">{pd.kanban}</TabsTrigger>
+          <TabsTrigger value="time">{pd.timeLogs}</TabsTrigger>
+          <TabsTrigger value="financials">{pd.financials}</TabsTrigger>
         </TabsList>
 
-        {/* Kanban Board */}
         <TabsContent value="kanban" className="mt-4">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-muted-foreground">{tasks.length} tasks</p>
+            <p className="text-sm text-muted-foreground">{tasks.length} {pd.tasks}</p>
             <Button size="sm" onClick={() => setTaskDialogOpen(true)}>
-              <Plus className="h-3 w-3 mr-1" /> Add Task
+              <Plus className="h-3 w-3 me-1" /> {pd.addTask}
             </Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -256,7 +257,7 @@ export default function ProjectDetailPage() {
               return (
                 <div key={col} className="space-y-2">
                   <div className="flex items-center gap-2 pb-1 border-b">
-                    <span className="text-sm font-medium">{col}</span>
+                    <span className="text-sm font-medium">{pd.taskStatuses[col]}</span>
                     <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
                       {colTasks.length}
                     </span>
@@ -290,7 +291,7 @@ export default function ProjectDetailPage() {
                           >
                             <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              {KANBAN_COLS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                              {KANBAN_COLS.map((s) => <SelectItem key={s} value={s}>{pd.taskStatuses[s]}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </CardContent>
@@ -303,22 +304,21 @@ export default function ProjectDetailPage() {
           </div>
         </TabsContent>
 
-        {/* Time Logs */}
         <TabsContent value="time" className="mt-4">
           <Card>
-            <CardHeader><CardTitle className="text-sm">Time Logs</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm">{pd.timeLogs}</CardTitle></CardHeader>
             <CardContent>
               {timeLogs.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No time logged yet.</p>
+                <p className="text-sm text-muted-foreground">{pd.noTimeLogs}</p>
               ) : (
                 <div className="divide-y text-sm">
                   {timeLogs.map((log) => (
                     <div key={log.id} className="py-2 flex items-center justify-between">
                       <div>
-                        <p className="font-medium">{log.user?.name ?? 'Unknown'}</p>
+                        <p className="font-medium">{log.user?.name ?? pd.unknown}</p>
                         {log.description && <p className="text-xs text-muted-foreground">{log.description}</p>}
                       </div>
-                      <div className="text-right">
+                      <div className="text-end">
                         <p className="font-mono font-semibold">{formatHours(log.hours)}</p>
                         <p className="text-xs text-muted-foreground">
                           {new Date(log.created_at).toLocaleDateString()}
@@ -332,24 +332,22 @@ export default function ProjectDetailPage() {
           </Card>
         </TabsContent>
 
-        {/* Financials */}
         <TabsContent value="financials" className="mt-4 space-y-4">
-          {/* Expenses */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm">Expenses</CardTitle>
+                <CardTitle className="text-sm">{pd.expenses}</CardTitle>
                 <span className="text-sm font-bold">{formatCurrency(totalExpenses)}</span>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex gap-2">
                 <Input
-                  placeholder="Amount (₪)" type="number" value={expenseAmount}
+                  placeholder={pd.amountPlaceholder} type="number" value={expenseAmount}
                   onChange={(e) => setExpenseAmount(e.target.value)} className="w-32"
                 />
                 <Input
-                  placeholder="Description" value={expenseDesc}
+                  placeholder={pd.descPlaceholder} value={expenseDesc}
                   onChange={(e) => setExpenseDesc(e.target.value)} className="flex-1"
                 />
                 <Button
@@ -364,7 +362,7 @@ export default function ProjectDetailPage() {
                     })
                   }
                 >
-                  Add
+                  {tr.common.add}
                 </Button>
               </div>
               {expenses.map((exp) => (
@@ -384,17 +382,16 @@ export default function ProjectDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Partner Payouts */}
           {partnerBreakdown.length > 0 && (
             <Card>
-              <CardHeader><CardTitle className="text-sm">Partner Payouts</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">{pd.partnerPayouts}</CardTitle></CardHeader>
               <CardContent>
                 <div className="divide-y text-sm">
                   {partnerBreakdown.map(({ member, hours, payout }) => (
                     <div key={member.id} className="py-2 flex items-center justify-between">
                       <div>
                         <p className="font-medium">{member.name}</p>
-                        <p className="text-xs text-muted-foreground">{formatHours(hours)} logged</p>
+                        <p className="text-xs text-muted-foreground">{formatHours(hours)} {tr.reports.logged}</p>
                       </div>
                       <p className="font-bold text-green-600">{formatCurrency(payout)}</p>
                     </div>

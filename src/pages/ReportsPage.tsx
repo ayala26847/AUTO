@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchProjects, fetchProjectTimeLogs, fetchProjectExpenses, fetchOrgMembers } from '@/lib/queries'
 import { useAuthStore } from '@/stores/authStore'
+import { useLang } from '@/hooks/useLang'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -26,6 +27,7 @@ interface MemberPayout {
 
 export default function ReportsPage() {
   const { organization } = useAuthStore()
+  const { tr } = useLang()
   const orgId = organization?.id ?? ''
   const [reports, setReports] = useState<ProjectReport[]>([])
   const [memberPayouts, setMemberPayouts] = useState<MemberPayout[]>([])
@@ -59,7 +61,6 @@ export default function ReportsPage() {
     ).then((rpts) => {
       setReports(rpts)
 
-      // Compute per-member payouts across all projects
       if (members.length > 0) {
         const payouts = members.map((m) => {
           let totalPayout = 0
@@ -92,23 +93,25 @@ export default function ReportsPage() {
     .filter((r) => r.project.pricing_type === 'Fixed')
     .reduce((sum, r) => sum + r.netProfit, 0)
 
+  const rp = tr.reports
+  const pp = tr.projects
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Reports & Financials</h1>
-        <p className="text-muted-foreground text-sm">Partner payouts & profitability analysis</p>
+        <h1 className="text-2xl font-bold">{rp.title}</h1>
+        <p className="text-muted-foreground text-sm">{rp.subtitle}</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-1">
-            <CardTitle className="text-xs text-muted-foreground">Total Revenue</CardTitle>
+            <CardTitle className="text-xs text-muted-foreground">{rp.totalRevenue}</CardTitle>
           </CardHeader>
           <CardContent><p className="text-2xl font-bold">{formatCurrency(totalRevenue)}</p></CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-1">
-            <CardTitle className="text-xs text-muted-foreground">Fixed-Price Profit</CardTitle>
+            <CardTitle className="text-xs text-muted-foreground">{rp.fixedProfit}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-green-600">{formatCurrency(totalProfit)}</p>
@@ -116,38 +119,37 @@ export default function ReportsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-1">
-            <CardTitle className="text-xs text-muted-foreground">Team Members</CardTitle>
+            <CardTitle className="text-xs text-muted-foreground">{rp.teamMembers}</CardTitle>
           </CardHeader>
           <CardContent><p className="text-2xl font-bold">{members.length}</p></CardContent>
         </Card>
       </div>
 
-      {/* Efficiency Matrix */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Project Profitability</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">{rp.projectProfitability}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {reports.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No project data yet.</p>
+            <p className="text-sm text-muted-foreground">{rp.noData}</p>
           ) : (
             reports.map((r) => (
               <div key={r.project.id} className="space-y-2">
                 <div className="flex items-center justify-between text-sm flex-wrap gap-2">
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{r.project.name}</span>
-                    <Badge variant="outline">{r.project.pricing_type}</Badge>
-                    <Badge>{r.project.status}</Badge>
+                    <Badge variant="outline">{pp.pricing[r.project.pricing_type]}</Badge>
+                    <Badge>{pp.statuses[r.project.status]}</Badge>
                   </div>
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <span>{formatHours(r.totalHours)}</span>
                     {r.project.pricing_type === 'Fixed' && (
                       <>
-                        <span className="text-green-600 font-semibold">{formatCurrency(r.netProfit)} profit</span>
+                        <span className="text-green-600 font-semibold">{formatCurrency(r.netProfit)} {rp.profit}</span>
                         <span className="font-semibold">{formatCurrency(r.ehr)}/hr EHR</span>
                       </>
                     )}
                     {r.project.pricing_type === 'Hourly' && (
                       <span className="font-semibold">
-                        {formatCurrency(r.totalHours * r.project.budget)} billed
+                        {formatCurrency(r.totalHours * r.project.budget)} {rp.billed}
                       </span>
                     )}
                   </div>
@@ -161,12 +163,11 @@ export default function ReportsPage() {
         </CardContent>
       </Card>
 
-      {/* Partner Payouts */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Partner Payouts — All Projects</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">{rp.partnerPayouts}</CardTitle></CardHeader>
         <CardContent>
           {memberPayouts.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No payout data yet. Log time to see payouts.</p>
+            <p className="text-sm text-muted-foreground">{rp.noPayouts}</p>
           ) : (
             <div className="space-y-3">
               {memberPayouts.map(({ member, totalPayout, totalHours }) => (
@@ -178,8 +179,8 @@ export default function ReportsPage() {
                     <div>
                       <p className="font-medium text-sm">{member.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        <Badge variant="secondary" className="text-xs">{member.role}</Badge>
-                        <span className="ml-2">{formatHours(totalHours)} logged</span>
+                        <Badge variant="secondary" className="text-xs">{tr.nav.role[member.role]}</Badge>
+                        <span className="ms-2">{formatHours(totalHours)} {rp.logged}</span>
                       </p>
                     </div>
                   </div>

@@ -4,6 +4,7 @@ import { Plus, FolderOpen } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { fetchProjects, upsertProject, fetchClients } from '@/lib/queries'
 import { useAuthStore } from '@/stores/authStore'
+import { useLang } from '@/hooks/useLang'
 import type { Project } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -29,6 +30,7 @@ function ProjectDialog({
   orgId: string
 }) {
   const qc = useQueryClient()
+  const { tr } = useLang()
   const [name, setName] = useState('')
   const [clientId, setClientId] = useState('')
   const [status, setStatus] = useState<Project['status']>('Active')
@@ -60,21 +62,22 @@ function ProjectDialog({
     })
   }
 
+  const p = tr.projects
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New Project</DialogTitle>
+          <DialogTitle>{p.newProject}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1">
-            <Label>Project Name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Website Automation" />
+            <Label>{p.projectName}</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={p.projectNamePlaceholder} />
           </div>
           <div className="space-y-1">
-            <Label>Client</Label>
+            <Label>{p.client}</Label>
             <Select value={clientId} onValueChange={setClientId}>
-              <SelectTrigger><SelectValue placeholder="Select client..." /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={p.selectClient} /></SelectTrigger>
               <SelectContent>
                 {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
@@ -82,36 +85,33 @@ function ProjectDialog({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label>Pricing Type</Label>
+              <Label>{p.pricingType}</Label>
               <Select value={pricingType} onValueChange={(v) => setPricingType(v as Project['pricing_type'])}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {PRICING_OPTIONS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                  {PRICING_OPTIONS.map((opt) => <SelectItem key={opt} value={opt}>{p.pricing[opt]}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
-              <Label>{pricingType === 'Fixed' ? 'Total Budget (₪)' : 'Hourly Rate (₪)'}</Label>
-              <Input
-                type="number" value={budget} onChange={(e) => setBudget(e.target.value)}
-                placeholder="0"
-              />
+              <Label>{pricingType === 'Fixed' ? p.totalBudget : p.hourlyRate}</Label>
+              <Input type="number" value={budget} onChange={(e) => setBudget(e.target.value)} placeholder="0" />
             </div>
           </div>
           <div className="space-y-1">
-            <Label>Status</Label>
+            <Label>{tr.common.status}</Label>
             <Select value={status} onValueChange={(v) => setStatus(v as Project['status'])}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {STATUS_OPTIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                {STATUS_OPTIONS.map((s) => <SelectItem key={s} value={s}>{p.statuses[s]}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>{tr.common.cancel}</Button>
           <Button onClick={handleSave} disabled={!name.trim() || mutation.isPending}>
-            {mutation.isPending ? 'Creating...' : 'Create Project'}
+            {mutation.isPending ? p.creating : p.createProject}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -128,6 +128,7 @@ const STATUS_COLOR: Record<Project['status'], 'default' | 'success' | 'warning' 
 
 export default function ProjectsPage() {
   const { organization } = useAuthStore()
+  const { tr } = useLang()
   const orgId = organization?.id ?? ''
   const [dialogOpen, setDialogOpen] = useState(false)
 
@@ -137,24 +138,25 @@ export default function ProjectsPage() {
     enabled: !!orgId,
   })
 
+  const p = tr.projects
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Projects</h1>
-          <p className="text-muted-foreground text-sm">{projects.length} total</p>
+          <h1 className="text-2xl font-bold">{p.title}</h1>
+          <p className="text-muted-foreground text-sm">{projects.length} {tr.common.total}</p>
         </div>
         <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" /> New Project
+          <Plus className="h-4 w-4 me-2" /> {p.newProject}
         </Button>
       </div>
 
       {isLoading ? (
-        <p className="text-muted-foreground text-sm">Loading...</p>
+        <p className="text-muted-foreground text-sm">{tr.common.loading}</p>
       ) : projects.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            No projects yet. Create your first project.
+            {p.noProjects}
           </CardContent>
         </Card>
       ) : (
@@ -168,7 +170,7 @@ export default function ProjectsPage() {
                       <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
                       <CardTitle className="text-base leading-tight">{project.name}</CardTitle>
                     </div>
-                    <Badge variant={STATUS_COLOR[project.status]} className="shrink-0">{project.status}</Badge>
+                    <Badge variant={STATUS_COLOR[project.status]} className="shrink-0">{p.statuses[project.status]}</Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
@@ -176,7 +178,7 @@ export default function ProjectsPage() {
                     <p className="text-xs text-muted-foreground">{project.client.name}</p>
                   )}
                   <div className="flex items-center justify-between">
-                    <Badge variant="outline">{project.pricing_type}</Badge>
+                    <Badge variant="outline">{p.pricing[project.pricing_type]}</Badge>
                     <span className="text-sm font-semibold">
                       {project.pricing_type === 'Fixed'
                         ? formatCurrency(project.budget)
