@@ -240,12 +240,11 @@ alter table organizations
   alter column join_code set default upper(substring(replace(gen_random_uuid()::text, '-', ''), 1, 8));
 
 -- ════════════════════════════════════════════════════════════
--- MIGRATION: Feature 2 — Time Log Attribution
+-- MIGRATION: Feature 2 — Time Log attributed_to (member array)
 -- ════════════════════════════════════════════════════════════
 
-alter table time_logs
-  add column if not exists attribution text not null default 'self'
-  check (attribution in ('self', 'partner', 'shared'));
+alter table time_logs drop column if exists attribution;
+alter table time_logs add column if not exists attributed_to uuid[] not null default '{}';
 
 -- ════════════════════════════════════════════════════════════
 -- Updated setup_workspace RPC (supports join_code)

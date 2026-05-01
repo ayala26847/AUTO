@@ -66,7 +66,7 @@ export interface TimeLog {
   task_id: string | null
   hours: number
   description: string
-  attribution: 'self' | 'partner' | 'shared'
+  attributed_to: string[]
   created_at: string
   project?: Project
   user?: User

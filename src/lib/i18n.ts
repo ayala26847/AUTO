@@ -152,6 +152,7 @@ const t = {
       amountPlaceholder: 'Amount (₪)',
       descPlaceholder: 'Description',
       partnerPayouts: 'Partner Payouts',
+      equalSplit: 'equal split',
       taskStatuses: {
         Backlog: 'Backlog',
         'In Progress': 'In Progress',
@@ -185,13 +186,8 @@ const t = {
       recentLogs: 'Recent Time Logs',
       noLogs: 'No time logged yet.',
       unknownProject: 'Unknown project',
-      attribution: 'Attribute to',
-      attrSelf: 'Me',
-      attrPartner: 'Partner',
-      attrShared: 'Both of us — split equally',
-      attrBadgePartner: 'Partner',
-      attrBadgeShared: 'Shared ÷2',
-      stopAttribution: 'Attribute time to',
+      whoWorked: 'Who worked on this?',
+      selectAll: 'Select all',
     },
     // Reports
     reports: {
@@ -207,6 +203,7 @@ const t = {
       logged: 'logged',
       profit: 'profit',
       billed: 'billed',
+      equalSplit: 'equal split',
     },
   },
 
@@ -352,6 +349,7 @@ const t = {
       amountPlaceholder: 'סכום (₪)',
       descPlaceholder: 'תיאור',
       partnerPayouts: 'תשלומי שותפים',
+      equalSplit: 'חלוקה שווה',
       taskStatuses: {
         Backlog: 'צבר',
         'In Progress': 'בביצוע',
@@ -383,13 +381,8 @@ const t = {
       recentLogs: 'דיווחי זמן אחרונים',
       noLogs: 'לא דווחו שעות עדיין.',
       unknownProject: 'פרויקט לא ידוע',
-      attribution: 'ייחוס ל',
-      attrSelf: 'אני',
-      attrPartner: 'שותף',
-      attrShared: 'שנינו — חלוקה שווה',
-      attrBadgePartner: 'שותף',
-      attrBadgeShared: 'משותף ÷2',
-      stopAttribution: 'ייחוס זמן ל',
+      whoWorked: 'מי עבד על זה?',
+      selectAll: 'בחר הכל',
     },
     reports: {
       title: 'דוחות וכספים',
@@ -404,6 +397,7 @@ const t = {
       logged: 'מדווח',
       profit: 'רווח',
       billed: 'חויב',
+      equalSplit: 'חלוקה שווה',
     },
   },
 } as const
