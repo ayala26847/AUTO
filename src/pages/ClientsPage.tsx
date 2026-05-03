@@ -56,6 +56,7 @@ export default function ClientsPage() {
   function openEdit(c: Client) { setEditing(c); setDialogOpen(true) }
   return (
     <div className="p-6 space-y-6">
+      
       <div className="flex items-center justify-between">
         <div><h1 className="text-2xl font-bold">{tr.clients.title}</h1><p className="text-muted-foreground text-sm">{clients.length} {tr.common.total}</p></div>
         <Button onClick={openNew}><Plus className="h-4 w-4 me-2" />{tr.clients.newClient}</Button>

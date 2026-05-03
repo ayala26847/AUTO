@@ -52,24 +52,14 @@ export default function ReportsPage() {
       setReports(rpts)
 
       if (members.length > 0) {
+        const totalPool = rpts.reduce((sum, r) => {
+          if (r.project.pricing_type === 'Fixed') return sum + r.netProfit
+          return sum + r.totalHours * r.project.budget
+        }, 0)
+        const perMember = members.length > 0 ? totalPool / members.length : 0
         const payouts = members.map((m) => {
-          let totalPayout = 0
-          let totalHours = 0
-          for (const r of rpts) {
-            if (r.project.pricing_type === 'Fixed') {
-              const uniqueIds = new Set(r.timeLogs.flatMap((log) => log.attributed_to ?? []))
-              if (!uniqueIds.has(m.id)) continue
-              const payout = uniqueIds.size > 0 ? r.netProfit / uniqueIds.size : 0
-              totalPayout += payout
-              totalHours += getMemberAttributedHours(m.id, r.timeLogs)
-            } else {
-              const mHours = getMemberAttributedHours(m.id, r.timeLogs)
-              if (mHours === 0) continue
-              totalHours += mHours
-              totalPayout += mHours * r.project.budget
-            }
-          }
-          return { member: m, totalPayout, totalHours }
+          const totalHours = rpts.reduce((h, r) => h + getMemberAttributedHours(m.id, r.timeLogs), 0)
+          return { member: m, totalPayout: perMember, totalHours }
         }).filter((p) => p.totalPayout > 0)
         setMemberPayouts(payouts)
       }

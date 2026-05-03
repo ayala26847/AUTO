@@ -44,7 +44,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <AuthGate />
+      <AuthGate />
       </BrowserRouter>
     </QueryClientProvider>
   )
