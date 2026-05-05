@@ -154,7 +154,10 @@ export default function ProjectDetailPage() {
   })
   const deleteExpenseMutation = useMutation({ mutationFn: deleteExpense, onSuccess: () => qc.invalidateQueries({ queryKey: ['expenses', id] }) })
   const updateTaskStatus = useMutation({
-    mutationFn: (payload: { task: Task; status: Task['status'] }) => upsertTask({ ...payload.task, status: payload.status }),
+    mutationFn: (payload: { task: Task; status: Task['status'] }) => {
+      const { assignee, created_at, ...taskData } = payload.task
+      return upsertTask({ ...taskData, status: payload.status })
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks', id] }),
   })
 
