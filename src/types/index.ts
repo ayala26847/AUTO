@@ -37,7 +37,7 @@ export interface Project {
   org_id: string
   client_id: string
   name: string
-  status: 'Active' | 'Completed' | 'On Hold' | 'Cancelled'
+  status: 'Not Started' | 'Active' | 'In Review' | 'Stuck' | 'On Hold' | 'Completed' | 'Cancelled'
   pricing_type: 'Hourly' | 'Fixed'
   budget: number
   description?: string
