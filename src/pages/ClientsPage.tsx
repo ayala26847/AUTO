@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { fetchClients, upsertClient, deleteClient } from '@/lib/queries'
@@ -22,6 +22,15 @@ function ClientDialog({ open, onClose, initial, orgId }: { open: boolean; onClos
   const [status, setStatus] = useState(initial?.status ?? 'Active')
   const [email, setEmail] = useState(initial?.contact_info?.email ?? '')
   const [phone, setPhone] = useState(initial?.contact_info?.phone ?? '')
+
+  useEffect(() => {
+    if (!open) return
+    setName(initial?.name ?? '')
+    setStatus(initial?.status ?? 'Active')
+    setEmail(initial?.contact_info?.email ?? '')
+    setPhone(initial?.contact_info?.phone ?? '')
+  }, [open, initial?.id])
+
   const mutation = useMutation({ mutationFn: upsertClient, onSuccess: () => { qc.invalidateQueries({ queryKey: ['clients'] }); onClose() } })
   function handleSave() { mutation.mutate({ ...(initial?.id ? { id: initial.id } : {}), org_id: orgId, name, status, contact_info: { email, phone } }) }
   return (
@@ -56,7 +65,6 @@ export default function ClientsPage() {
   function openEdit(c: Client) { setEditing(c); setDialogOpen(true) }
   return (
     <div className="p-6 space-y-6">
-      
       <div className="flex items-center justify-between">
         <div><h1 className="text-2xl font-bold">{tr.clients.title}</h1><p className="text-muted-foreground text-sm">{clients.length} {tr.common.total}</p></div>
         <Button onClick={openNew}><Plus className="h-4 w-4 me-2" />{tr.clients.newClient}</Button>

@@ -210,6 +210,9 @@ export default function ProjectDetailPage() {
             <Card><CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground">{pd.ehr}</CardTitle></CardHeader><CardContent><p className="text-lg font-bold">{formatCurrency(ehr)}/hr</p></CardContent></Card>
           </>
         )}
+        {project.pricing_type === 'Hourly' && (
+          <Card><CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground">{pd.totalRevenue}</CardTitle></CardHeader><CardContent><p className="text-lg font-bold text-green-600">{formatCurrency(totalHours * project.budget)}</p></CardContent></Card>
+        )}
       </div>
 
       <Tabs defaultValue="kanban">
