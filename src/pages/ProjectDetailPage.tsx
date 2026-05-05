@@ -24,6 +24,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { formatCurrency, formatHours, calcEHR, getMemberAttributedHours } from '@/lib/utils'
+import { ProjectLinksTab } from '@/components/project/ProjectLinksTab'
 
 const KANBAN_COLS: Task['status'][] = ['Backlog', 'In Progress', 'Review', 'Done']
 
@@ -216,6 +217,7 @@ export default function ProjectDetailPage() {
           <TabsTrigger value="kanban">{pd.kanban}</TabsTrigger>
           <TabsTrigger value="time">{pd.timeLogs}</TabsTrigger>
           <TabsTrigger value="financials">{pd.financials}</TabsTrigger>
+          <TabsTrigger value="links">{pd.links}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="kanban" className="mt-4">
@@ -342,6 +344,10 @@ export default function ProjectDetailPage() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="links" className="mt-4">
+          <ProjectLinksTab projectId={id!} orgId={orgId} />
         </TabsContent>
       </Tabs>
 

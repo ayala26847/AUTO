@@ -247,6 +247,38 @@ alter table time_logs drop column if exists attribution;
 alter table time_logs add column if not exists attributed_to uuid[] not null default '{}';
 
 -- ════════════════════════════════════════════════════════════
+-- MIGRATION: project_links table
+-- ════════════════════════════════════════════════════════════
+
+create table if not exists project_links (
+  id          uuid primary key default uuid_generate_v4(),
+  org_id      uuid not null references organizations(id) on delete cascade,
+  project_id  uuid not null references projects(id) on delete cascade,
+  name        text not null,
+  url         text not null,
+  category    text not null default 'Project',
+  username    text not null default '',
+  -- TODO: encrypt with pgcrypto in production (pgp_sym_encrypt/pgp_sym_decrypt)
+  password    text not null default '',
+  notes       text not null default '',
+  created_at  timestamp with time zone default now()
+);
+
+alter table project_links enable row level security;
+
+drop policy if exists "org scoped project_links select" on project_links;
+drop policy if exists "org scoped project_links insert" on project_links;
+drop policy if exists "org scoped project_links update" on project_links;
+drop policy if exists "org scoped project_links delete" on project_links;
+
+create policy "org scoped project_links select" on project_links for select using (org_id = get_my_org_id());
+create policy "org scoped project_links insert" on project_links for insert with check (org_id = get_my_org_id());
+create policy "org scoped project_links update" on project_links for update using (org_id = get_my_org_id());
+create policy "org scoped project_links delete" on project_links for delete using (org_id = get_my_org_id());
+
+grant all on project_links to anon, authenticated;
+
+-- ════════════════════════════════════════════════════════════
 -- Updated setup_workspace RPC (supports join_code)
 -- ════════════════════════════════════════════════════════════
 
@@ -286,3 +318,26 @@ $$;
 
 grant execute on function setup_workspace(text, text, text) to authenticated, anon;
 notify pgrst, 'reload schema';
+
+-- MIGRATION: project_links table
+create table if not exists project_links (
+  id          uuid primary key default uuid_generate_v4(),
+  org_id      uuid not null references organizations(id) on delete cascade,
+  project_id  uuid not null references projects(id) on delete cascade,
+  name        text not null,
+  url         text not null,
+  category    text not null default 'Project',
+  username    text not null default '',
+  password    text not null default '',
+  notes       text not null default '',
+  created_at  timestamp with time zone default now()
+);
+
+alter table project_links enable row level security;
+
+create policy "org scoped project_links select" on project_links for select using (org_id = get_my_org_id());
+create policy "org scoped project_links insert" on project_links for insert with check (org_id = get_my_org_id());
+create policy "org scoped project_links update" on project_links for update using (org_id = get_my_org_id());
+create policy "org scoped project_links delete" on project_links for delete using (org_id = get_my_org_id());
+
+grant all on project_links to anon, authenticated;

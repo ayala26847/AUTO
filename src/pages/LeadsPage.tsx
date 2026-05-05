@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { fetchLeads, upsertLead, deleteLead } from '@/lib/queries'
@@ -25,6 +25,14 @@ function LeadDialog({ open, onClose, initial, orgId }: { open: boolean; onClose:
   const [status, setStatus] = useState<Lead['status']>(initial?.status ?? 'New')
   const [notes, setNotes] = useState(initial?.notes ?? '')
   const [email, setEmail] = useState(initial?.contact_info?.email ?? '')
+
+  useEffect(() => {
+    if (!open) return
+    setName(initial?.name ?? '')
+    setStatus(initial?.status ?? 'New')
+    setNotes(initial?.notes ?? '')
+    setEmail(initial?.contact_info?.email ?? '')
+  }, [open, initial?.id])
   const mutation = useMutation({ mutationFn: upsertLead, onSuccess: () => { qc.invalidateQueries({ queryKey: ['leads'] }); onClose() } })
   function handleSave() { mutation.mutate({ ...(initial?.id ? { id: initial.id } : {}), org_id: orgId, name, status, notes, contact_info: { email } }) }
   return (
@@ -99,7 +107,7 @@ export default function LeadsPage() {
           })}
         </div>
       )}
-      <LeadDialog open={dialogOpen} onClose={() => setDialogOpen(false)} initial={editing} orgId={orgId} />
+      <LeadDialog key={editing?.id ?? 'new'} open={dialogOpen} onClose={() => setDialogOpen(false)} initial={editing} orgId={orgId} />
     </div>
   )
 }

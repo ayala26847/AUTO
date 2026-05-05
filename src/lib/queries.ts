@@ -9,6 +9,7 @@ import type {
   ActiveTimer,
   Expense,
   User,
+  ProjectLink,
 } from '@/types'
 
 // ── Organizations ─────────────────────────────────────────────────────────────
@@ -254,4 +255,47 @@ export async function fetchOrgMembers(orgId: string): Promise<User[]> {
     .order('name')
   if (error) throw error
   return data
+}
+
+// ── Project Links ─────────────────────────────────────────────────────────────
+
+export async function fetchProjectLinks(projectId: string): Promise<ProjectLink[]> {
+  const { data, error } = await supabase
+    .from('project_links')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at')
+  if (error) throw error
+  return data
+}
+
+export async function insertProjectLink(
+  link: Omit<ProjectLink, 'id' | 'created_at'>,
+): Promise<ProjectLink> {
+  const { data, error } = await supabase
+    .from('project_links')
+    .insert(link)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function updateProjectLink(
+  link: Partial<ProjectLink> & { id: string },
+): Promise<ProjectLink> {
+  const { id, ...rest } = link
+  const { data, error } = await supabase
+    .from('project_links')
+    .update(rest)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteProjectLink(id: string): Promise<void> {
+  const { error } = await supabase.from('project_links').delete().eq('id', id)
+  if (error) throw error
 }
