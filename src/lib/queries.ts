@@ -5,6 +5,7 @@ import type {
   Lead,
   Project,
   Task,
+  SubTask,
   TimeLog,
   ActiveTimer,
   Expense,
@@ -24,7 +25,7 @@ export async function fetchOrganization(orgId: string): Promise<Organization> {
   return data as Organization
 }
 
-// ── Clients ──────────────────────────────────────────────────────────────────
+// ── Clients ───────────────────────────────────────────────────────────────────
 
 export async function fetchClients(orgId: string): Promise<Client[]> {
   const { data, error } = await supabase
@@ -116,6 +117,34 @@ export async function upsertProject(
   return data
 }
 
+export async function deleteProject(id: string): Promise<void> {
+  const { error } = await supabase.from('projects').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function fetchProjectsProgressSummary(
+  orgId: string,
+): Promise<Record<string, { estimated: number; logged: number }>> {
+  const [{ data: taskData }, { data: logData }] = await Promise.all([
+    supabase.from('tasks').select('project_id, estimated_hours').eq('org_id', orgId),
+    supabase.from('time_logs').select('project_id, hours').eq('org_id', orgId),
+  ])
+
+  const result: Record<string, { estimated: number; logged: number }> = {}
+
+  taskData?.forEach((t) => {
+    if (!result[t.project_id]) result[t.project_id] = { estimated: 0, logged: 0 }
+    result[t.project_id].estimated += t.estimated_hours || 0
+  })
+
+  logData?.forEach((l) => {
+    if (!result[l.project_id]) result[l.project_id] = { estimated: 0, logged: 0 }
+    result[l.project_id].logged += l.hours || 0
+  })
+
+  return result
+}
+
 // ── Tasks ─────────────────────────────────────────────────────────────────────
 
 export async function fetchTasks(projectId: string): Promise<Task[]> {
@@ -145,12 +174,41 @@ export async function deleteTask(id: string): Promise<void> {
   if (error) throw error
 }
 
+// ── Sub-tasks ─────────────────────────────────────────────────────────────────
+
+export async function fetchProjectSubTasks(projectId: string): Promise<SubTask[]> {
+  const { data, error } = await supabase
+    .from('sub_tasks')
+    .select('*, assignee:users(id, name, email)')
+    .eq('project_id', projectId)
+    .order('created_at')
+  if (error) throw error
+  return data as SubTask[]
+}
+
+export async function upsertSubTask(
+  subTask: Omit<SubTask, 'id' | 'created_at' | 'assignee'> & { id?: string },
+): Promise<SubTask> {
+  const { data, error } = await supabase
+    .from('sub_tasks')
+    .upsert(subTask)
+    .select('*, assignee:users(id, name, email)')
+    .single()
+  if (error) throw error
+  return data as SubTask
+}
+
+export async function deleteSubTask(id: string): Promise<void> {
+  const { error } = await supabase.from('sub_tasks').delete().eq('id', id)
+  if (error) throw error
+}
+
 // ── Time Logs ─────────────────────────────────────────────────────────────────
 
 export async function fetchTimeLogs(orgId: string): Promise<TimeLog[]> {
   const { data, error } = await supabase
     .from('time_logs')
-    .select('*, project:projects(id, name), user:users(id, name)')
+    .select('*, project:projects(id, name, pricing_type, budget), user:users(id, name)')
     .eq('org_id', orgId)
     .order('created_at', { ascending: false })
   if (error) throw error
@@ -168,7 +226,7 @@ export async function fetchProjectTimeLogs(projectId: string): Promise<TimeLog[]
 }
 
 export async function insertTimeLog(
-  log: Omit<TimeLog, 'id' | 'created_at' | 'project' | 'user'>,
+  log: Omit<TimeLog, 'id' | 'created_at' | 'project' | 'user' | 'sub_task'>,
 ): Promise<TimeLog> {
   const { data, error } = await supabase
     .from('time_logs')
@@ -189,7 +247,7 @@ export async function deleteTimeLog(id: string): Promise<void> {
 export async function fetchActiveTimer(userId: string): Promise<ActiveTimer | null> {
   const { data, error } = await supabase
     .from('active_timers')
-    .select('*, project:projects(id, name), task:tasks(id, title)')
+    .select('*, project:projects(id, name), task:tasks(id, title), sub_task:sub_tasks(id, title)')
     .eq('user_id', userId)
     .maybeSingle()
   if (error) throw error
@@ -197,12 +255,12 @@ export async function fetchActiveTimer(userId: string): Promise<ActiveTimer | nu
 }
 
 export async function startTimer(
-  timer: Omit<ActiveTimer, 'id' | 'project' | 'task'>,
+  timer: Omit<ActiveTimer, 'id' | 'project' | 'task' | 'sub_task'>,
 ): Promise<ActiveTimer> {
   const { data, error } = await supabase
     .from('active_timers')
     .insert(timer)
-    .select('*, project:projects(id, name), task:tasks(id, title)')
+    .select('*, project:projects(id, name), task:tasks(id, title), sub_task:sub_tasks(id, title)')
     .single()
   if (error) throw error
   return data as ActiveTimer
@@ -255,11 +313,6 @@ export async function fetchOrgMembers(orgId: string): Promise<User[]> {
     .order('name')
   if (error) throw error
   return data
-}
-
-export async function deleteProject(id: string): Promise<void> {
-  const { error } = await supabase.from('projects').delete().eq('id', id)
-  if (error) throw error
 }
 
 // ── Project Links ─────────────────────────────────────────────────────────────

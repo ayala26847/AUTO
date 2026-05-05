@@ -38,7 +38,7 @@ export interface Project {
   client_id: string
   name: string
   status: 'Not Started' | 'Active' | 'In Review' | 'Stuck' | 'On Hold' | 'Completed' | 'Cancelled'
-  stage: 'Not Started' | 'In Progress' | 'Done' | 'Cancelled'
+  stage?: 'Not Started' | 'In Progress' | 'Done' | 'Cancelled'
   pricing_type: 'Hourly' | 'Fixed'
   budget: number
   description?: string
@@ -55,6 +55,21 @@ export interface Task {
   description?: string
   status: 'Backlog' | 'In Progress' | 'Review' | 'Done'
   due_date: string | null
+  estimated_hours: number
+  note: string | null
+  created_at: string
+  assignee?: User
+}
+
+export interface SubTask {
+  id: string
+  org_id: string
+  task_id: string
+  project_id: string
+  title: string
+  estimated_hours: number
+  assigned_to: string | null
+  status: 'Backlog' | 'In Progress' | 'Review' | 'Done'
   created_at: string
   assignee?: User
 }
@@ -65,12 +80,14 @@ export interface TimeLog {
   project_id: string
   user_id: string
   task_id: string | null
+  sub_task_id: string | null
   hours: number
   description: string
   attributed_to: string[]
   created_at: string
   project?: Project
   user?: User
+  sub_task?: SubTask
 }
 
 export interface ActiveTimer {
@@ -79,9 +96,11 @@ export interface ActiveTimer {
   org_id: string
   project_id: string
   task_id: string | null
+  sub_task_id: string | null
   start_time: string
   project?: Project
   task?: Task
+  sub_task?: SubTask
 }
 
 export interface Expense {

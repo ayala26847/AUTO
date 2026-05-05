@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import type { TimeLog } from '@/types'
+import type { Task, SubTask, TimeLog } from '@/types'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -43,10 +43,70 @@ export function calcPartnerPayout(
   return totalHours > 0 ? (individualHours / totalHours) * netProfit : 0
 }
 
-// Hours a member is attributed across a set of logs (split equally among attributed_to per log)
 export function getMemberAttributedHours(memberId: string, logs: TimeLog[]): number {
   return logs.reduce((sum, log) => {
     if (!log.attributed_to.includes(memberId)) return sum
     return sum + log.hours / (log.attributed_to.length || 1)
   }, 0)
+}
+
+// ── Progress Calculations ─────────────────────────────────────────────────────
+
+export interface ProgressResult {
+  logged: number
+  estimated: number
+  pct: number
+  isOver: boolean
+}
+
+export function calcTaskProgress(task: Task, logs: TimeLog[]): ProgressResult {
+  const logged = logs
+    .filter((l) => l.task_id === task.id)
+    .reduce((s, l) => s + l.hours, 0)
+
+  let pct: number
+  if (task.estimated_hours > 0) {
+    pct = (logged / task.estimated_hours) * 100
+  } else {
+    pct = task.status === 'Done' ? 100 : 0
+  }
+
+  return { logged, estimated: task.estimated_hours, pct, isOver: pct > 100 }
+}
+
+export function calcSubTaskProgress(subTask: SubTask, logs: TimeLog[]): ProgressResult {
+  const logged = logs
+    .filter((l) => l.sub_task_id === subTask.id)
+    .reduce((s, l) => s + l.hours, 0)
+
+  let pct: number
+  if (subTask.estimated_hours > 0) {
+    pct = (logged / subTask.estimated_hours) * 100
+  } else {
+    pct = subTask.status === 'Done' ? 100 : 0
+  }
+
+  return { logged, estimated: subTask.estimated_hours, pct, isOver: pct > 100 }
+}
+
+export interface ProjectProgressResult {
+  totalLogged: number
+  totalEstimated: number
+  pct: number
+  isOver: boolean
+  basis: 'hours' | 'tasks'
+}
+
+export function calcProjectProgress(tasks: Task[], logs: TimeLog[]): ProjectProgressResult {
+  const totalEstimated = tasks.reduce((s, t) => s + (t.estimated_hours || 0), 0)
+  const totalLogged = logs.reduce((s, l) => s + l.hours, 0)
+
+  if (totalEstimated > 0) {
+    const pct = (totalLogged / totalEstimated) * 100
+    return { totalLogged, totalEstimated, pct, isOver: pct > 100, basis: 'hours' }
+  }
+
+  const doneTasks = tasks.filter((t) => t.status === 'Done').length
+  const pct = tasks.length > 0 ? (doneTasks / tasks.length) * 100 : 0
+  return { totalLogged, totalEstimated: 0, pct, isOver: false, basis: 'tasks' }
 }

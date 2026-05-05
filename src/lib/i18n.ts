@@ -166,6 +166,7 @@ const t = {
       descPlaceholder: 'Description',
       partnerPayouts: 'Partner Payouts',
       equalSplit: 'equal split',
+      addSubTask: 'Add Sub-task',
       taskStatuses: {
         Backlog: 'Backlog',
         'In Progress': 'In Progress',
@@ -402,6 +403,7 @@ const t = {
       descPlaceholder: 'תיאור',
       partnerPayouts: 'תשלומי שותפים',
       equalSplit: 'חלוקה שווה',
+      addSubTask: 'הוסף תת-משימה',
       taskStatuses: {
         Backlog: 'צבר',
         'In Progress': 'בביצוע',

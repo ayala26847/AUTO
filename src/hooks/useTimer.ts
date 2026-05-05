@@ -60,6 +60,7 @@ export function useTimer() {
         project_id: activeTimer.project_id,
         user_id: user.id,
         task_id: activeTimer.task_id,
+        sub_task_id: activeTimer.sub_task_id,
         hours: Math.round(hours * 100) / 100,
         description: '',
         attributed_to: ids,
@@ -69,16 +70,22 @@ export function useTimer() {
       setActiveTimer(null)
       queryClient.invalidateQueries({ queryKey: ['active-timer'] })
       queryClient.invalidateQueries({ queryKey: ['time-logs'] })
+      queryClient.invalidateQueries({ queryKey: ['project-time-logs'] })
     },
   })
 
-  async function handleStart(projectId: string, taskId: string | null) {
+  async function handleStart(
+    projectId: string,
+    taskId: string | null,
+    subTaskId?: string | null,
+  ) {
     if (!user || !organization) return
     startMutation.mutate({
       user_id: user.id,
       org_id: organization.id,
       project_id: projectId,
       task_id: taskId,
+      sub_task_id: subTaskId ?? null,
       start_time: new Date().toISOString(),
     })
   }
