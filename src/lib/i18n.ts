@@ -119,6 +119,13 @@ const t = {
       creating: 'Creating...',
       createProject: 'Create Project',
       editProject: 'Edit Project',
+      stage: 'Project Stage',
+      stages: {
+        'Not Started': 'Not Started',
+        'In Progress': 'In Progress',
+        Done: 'Done',
+        Cancelled: 'Cancelled',
+      },
       statuses: {
         'Not Started': 'Not Started',
         Active: 'Active',
@@ -349,6 +356,13 @@ const t = {
       creating: 'יוצר...',
       createProject: 'יצירת פרויקט',
       editProject: 'עריכת פרויקט',
+      stage: 'שלב פרויקט',
+      stages: {
+        'Not Started': 'לא התחיל',
+        'In Progress': 'בתהליך',
+        Done: 'הושלם',
+        Cancelled: 'בוטל',
+      },
       statuses: {
         'Not Started': 'לא התחיל',
         Active: 'פעיל',
