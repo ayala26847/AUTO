@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select'
 import { formatCurrency } from '@/lib/utils'
 
-const STATUS_OPTIONS: Project['status'][] = ['Active', 'Completed', 'On Hold', 'Cancelled']
+const STATUS_OPTIONS: Project['status'][] = ['Not Started', 'Active', 'In Review', 'Stuck', 'On Hold', 'Completed', 'Cancelled']
 const PRICING_OPTIONS: Project['pricing_type'][] = ['Hourly', 'Fixed']
 
 function ProjectDialog({
@@ -120,9 +120,12 @@ function ProjectDialog({
 }
 
 const STATUS_COLOR: Record<Project['status'], 'default' | 'success' | 'warning' | 'secondary' | 'destructive'> = {
+  'Not Started': 'secondary',
   Active: 'success',
+  'In Review': 'warning',
+  Stuck: 'destructive',
+  'On Hold': 'secondary',
   Completed: 'default',
-  'On Hold': 'warning',
   Cancelled: 'destructive',
 }
 
