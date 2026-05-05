@@ -106,3 +106,16 @@ export interface PartnerPayout {
   hours: number
   payout: number
 }
+
+export interface ProjectLink {
+  id: string
+  org_id: string
+  project_id: string
+  name: string
+  url: string
+  category: string
+  username: string
+  password: string
+  notes: string
+  created_at: string
+}
