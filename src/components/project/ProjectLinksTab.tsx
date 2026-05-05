@@ -14,6 +14,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog'
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
@@ -74,20 +77,24 @@ type LinkTranslations = {
   details: string
 }
 
-function LinkForm({
+function LinkDialog({
+  open,
+  onClose,
   form,
   setForm,
   l,
   isPending,
   onSave,
-  onCancel,
+  isEdit,
 }: {
+  open: boolean
+  onClose: () => void
   form: LinkFormData
   setForm: (f: LinkFormData) => void
   l: LinkTranslations
   isPending: boolean
   onSave: () => void
-  onCancel: () => void
+  isEdit: boolean
 }) {
   function field(key: keyof LinkFormData) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -95,59 +102,65 @@ function LinkForm({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <Label>{l.name}</Label>
-          <Input value={form.name} onChange={field('name')} />
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{isEdit ? l.editLink : l.addLink}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-3">
+            <div className="space-y-1">
+              <Label>{l.name}</Label>
+              <Input value={form.name} onChange={field('name')} />
+            </div>
+            <div className="space-y-1">
+              <Label>{l.url}</Label>
+              <Input value={form.url} onChange={field('url')} placeholder="https://" />
+            </div>
+            <div className="space-y-1">
+              <Label>{l.category}</Label>
+              <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {l.categories[cat]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>{l.username}</Label>
+              <Input value={form.username} onChange={field('username')} autoComplete="off" />
+            </div>
+            <div className="space-y-1">
+              <Label>{l.password}</Label>
+              {/* TODO: encrypt with pgcrypto in production — currently stored as plain text */}
+              <Input type="text" value={form.password} onChange={field('password')} autoComplete="new-password" />
+            </div>
+            <div className="space-y-1">
+              <Label>{l.notes}</Label>
+              <Textarea
+                value={form.notes}
+                onChange={field('notes')}
+                placeholder={l.notesPlaceholder}
+                className="min-h-[60px]"
+              />
+            </div>
+          </div>
         </div>
-        <div className="space-y-1">
-          <Label>{l.url}</Label>
-          <Input value={form.url} onChange={field('url')} placeholder="https://" />
-        </div>
-        <div className="space-y-1">
-          <Label>{l.category}</Label>
-          <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {CATEGORIES.map((cat) => (
-                <SelectItem key={cat} value={cat}>
-                  {l.categories[cat]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label>{l.username}</Label>
-          <Input value={form.username} onChange={field('username')} autoComplete="off" />
-        </div>
-        <div className="space-y-1">
-          <Label>{l.password}</Label>
-          {/* TODO: encrypt with pgcrypto in production — currently stored as plain text */}
-          <Input type="text" value={form.password} onChange={field('password')} autoComplete="new-password" />
-        </div>
-      </div>
-      <div className="space-y-1">
-        <Label>{l.notes}</Label>
-        <Textarea
-          value={form.notes}
-          onChange={field('notes')}
-          placeholder={l.notesPlaceholder}
-          className="min-h-[60px]"
-        />
-      </div>
-      <div className="flex justify-end gap-2">
-        <Button variant="outline" size="sm" onClick={onCancel}>{l.cancel}</Button>
-        <Button
-          size="sm"
-          disabled={!form.name.trim() || !form.url.trim() || isPending}
-          onClick={onSave}
-        >
-          {isPending ? l.saving : l.save}
-        </Button>
-      </div>
-    </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>{l.cancel}</Button>
+          <Button
+            disabled={!form.name.trim() || !form.url.trim() || isPending}
+            onClick={onSave}
+          >
+            {isPending ? l.saving : l.save}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -249,16 +262,19 @@ export function ProjectLinksTab({ projectId, orgId }: Props) {
   }
 
   const isPending = insertMut.isPending || updateMut.isPending
+  const dialogOpen = editingId !== null
   const filtered = filter === 'All' ? links : links.filter((lnk) => lnk.category === filter)
   const counts = Object.fromEntries(
     CATEGORIES.map((cat) => [cat, links.filter((lnk) => lnk.category === cat).length]),
   )
 
+  function closeDialog() { setEditingId(null); setForm(emptyForm) }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">{l.title}</h3>
-        <Button size="sm" onClick={startNew} disabled={editingId === 'new'}>
+        <Button size="sm" onClick={startNew}>
           <Plus className="h-3 w-3 me-1" /> {l.addLink}
         </Button>
       </div>
@@ -284,28 +300,12 @@ export function ProjectLinksTab({ projectId, orgId }: Props) {
         })}
       </div>
 
-      {filtered.length === 0 && editingId !== 'new' && (
+      {filtered.length === 0 && (
         <p className="text-sm text-muted-foreground py-6 text-center">{l.noLinks}</p>
       )}
 
       <div className="space-y-2">
         {filtered.map((link) => {
-          if (editingId === link.id) {
-            return (
-              <div key={link.id} className="border rounded-lg p-4">
-                <p className="text-xs font-semibold text-muted-foreground mb-3">{l.editLink}</p>
-                <LinkForm
-                  form={form}
-                  setForm={setForm}
-                  l={l}
-                  isPending={isPending}
-                  onSave={handleSave}
-                  onCancel={() => { setEditingId(null); setForm(emptyForm) }}
-                />
-              </div>
-            )
-          }
-
           const isExpanded = expanded.has(link.id)
           const isPwdVisible = showPwd.has(link.id)
           const catBg = ICON_BG[link.category] ?? 'bg-gray-400'
@@ -422,21 +422,18 @@ export function ProjectLinksTab({ projectId, orgId }: Props) {
             </div>
           )
         })}
-
-        {editingId === 'new' && (
-          <div className="border rounded-lg p-4">
-            <p className="text-xs font-semibold text-muted-foreground mb-3">{l.addLink}</p>
-            <LinkForm
-              form={form}
-              setForm={setForm}
-              l={l}
-              isPending={isPending}
-              onSave={handleSave}
-              onCancel={() => { setEditingId(null); setForm(emptyForm) }}
-            />
-          </div>
-        )}
       </div>
+
+      <LinkDialog
+        open={dialogOpen}
+        onClose={closeDialog}
+        form={form}
+        setForm={setForm}
+        l={l}
+        isPending={isPending}
+        onSave={handleSave}
+        isEdit={editingId !== null && editingId !== 'new'}
+      />
     </div>
   )
 }
