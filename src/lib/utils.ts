@@ -97,15 +97,19 @@ export interface ProjectProgressResult {
   basis: 'hours' | 'tasks'
 }
 
-export function calcProjectProgress(tasks: Task[], logs: TimeLog[]): ProjectProgressResult {
-  const totalEstimated = tasks.reduce((s, t) => s + (t.estimated_hours || 0), 0)
+export function calcProjectProgress(
+  tasks: Task[],
+  logs: TimeLog[],
+  projectEstimatedHours = 0,
+): ProjectProgressResult {
   const totalLogged = logs.reduce((s, l) => s + l.hours, 0)
 
-  if (totalEstimated > 0) {
-    const pct = (totalLogged / totalEstimated) * 100
-    return { totalLogged, totalEstimated, pct, isOver: pct > 100, basis: 'hours' }
+  if (projectEstimatedHours > 0) {
+    const pct = (totalLogged / projectEstimatedHours) * 100
+    return { totalLogged, totalEstimated: projectEstimatedHours, pct, isOver: pct > 100, basis: 'hours' }
   }
 
+  // No project-level estimate — fall back to tasks done/total
   const doneTasks = tasks.filter((t) => t.status === 'Done').length
   const pct = tasks.length > 0 ? (doneTasks / tasks.length) * 100 : 0
   return { totalLogged, totalEstimated: 0, pct, isOver: false, basis: 'tasks' }

@@ -275,16 +275,13 @@ export default function ProjectsPage() {
               const logged = summary?.logged ?? 0
               pct = (logged / project.estimated_hours) * 100
               progressLabel = `${formatHours(logged)} / ${formatHours(project.estimated_hours)}`
-            } else if (summary && summary.estimated > 0) {
-              pct = (summary.logged / summary.estimated) * 100
-              progressLabel = `${formatHours(summary.logged)} / ${formatHours(summary.estimated)}`
             } else if (summary && summary.taskCount > 0) {
               pct = (summary.doneTaskCount / summary.taskCount) * 100
               progressLabel = `${summary.doneTaskCount}/${summary.taskCount} משימות`
             }
 
             const showProgress = (project.estimated_hours ?? 0) > 0
-              || (!!summary && (summary.taskCount > 0 || summary.logged > 0))
+              || (!!summary && summary.taskCount > 0)
 
             return (
               <Card key={project.id} className="hover:shadow-md transition-shadow">

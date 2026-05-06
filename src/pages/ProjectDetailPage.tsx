@@ -204,7 +204,7 @@ export default function ProjectDetailPage() {
   const netProfit = project.pricing_type === 'Fixed' ? project.budget - totalExpenses : 0
   const ehr = calcEHR(netProfit, totalHours)
 
-  const projectProgress = calcProjectProgress(tasks, timeLogs)
+  const projectProgress = calcProjectProgress(tasks, timeLogs, project.estimated_hours ?? 0)
 
   const uniqueAttributedIds = new Set(timeLogs.flatMap((log) => log.attributed_to ?? []))
   const perMemberFixedPayout = uniqueAttributedIds.size > 0 ? netProfit / uniqueAttributedIds.size : 0
