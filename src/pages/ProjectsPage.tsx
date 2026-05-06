@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, FolderOpen } from 'lucide-react'
+import { Plus, FolderOpen, Pencil, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import {
-  fetchProjects, upsertProject, fetchClients, fetchProjectsProgressSummary,
+  fetchProjects, upsertProject, deleteProject, fetchClients, fetchProjectsProgressSummary,
 } from '@/lib/queries'
 import { useAuthStore } from '@/stores/authStore'
 import { useLang } from '@/hooks/useLang'
@@ -19,21 +19,75 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { formatCurrency, cn } from '@/lib/utils'
+import { formatCurrency, formatHours, cn } from '@/lib/utils'
 
 const STATUS_OPTIONS: Project['status'][] = [
   'Not Started', 'Active', 'In Review', 'Stuck', 'On Hold', 'Completed', 'Cancelled',
 ]
 const PRICING_OPTIONS: Project['pricing_type'][] = ['Hourly', 'Fixed']
 
-function ProjectDialog({ open, onClose, orgId }: { open: boolean; onClose: () => void; orgId: string }) {
+const STATUS_COLOR: Record<Project['status'], 'default' | 'success' | 'warning' | 'secondary' | 'destructive'> = {
+  'Not Started': 'secondary',
+  Active: 'success',
+  'In Review': 'warning',
+  Stuck: 'destructive',
+  'On Hold': 'secondary',
+  Completed: 'default',
+  Cancelled: 'destructive',
+}
+
+function MiniProgress({ pct, label }: { pct: number; label: string }) {
+  const isOver = pct > 100
+  const displayPct = Math.min(pct, 100)
+  return (
+    <div className="space-y-0.5 mt-2">
+      <div className="flex justify-between text-xs text-muted-foreground">
+        <span>{label}</span>
+        <span className={cn('font-medium tabular-nums', isOver && 'text-red-600')}>
+          {Math.round(pct)}%
+        </span>
+      </div>
+      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+        <div
+          className={cn(
+            'h-full rounded-full transition-all',
+            isOver ? 'bg-red-500' : pct >= 100 ? 'bg-green-500' : 'bg-primary',
+          )}
+          style={{ width: `${displayPct}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function ProjectDialog({
+  open, onClose, orgId, initial,
+}: {
+  open: boolean
+  onClose: () => void
+  orgId: string
+  initial?: Project
+}) {
   const qc = useQueryClient()
   const { tr } = useLang()
-  const [name, setName] = useState('')
-  const [clientId, setClientId] = useState('')
-  const [status, setStatus] = useState<Project['status']>('Active')
-  const [pricingType, setPricingType] = useState<Project['pricing_type']>('Fixed')
-  const [budget, setBudget] = useState('')
+  const [name, setName] = useState(initial?.name ?? '')
+  const [clientId, setClientId] = useState(initial?.client_id ?? '')
+  const [status, setStatus] = useState<Project['status']>(initial?.status ?? 'Active')
+  const [pricingType, setPricingType] = useState<Project['pricing_type']>(initial?.pricing_type ?? 'Fixed')
+  const [budget, setBudget] = useState(initial?.budget?.toString() ?? '')
+  const [estimatedHours, setEstimatedHours] = useState(
+    initial?.estimated_hours ? initial.estimated_hours.toString() : '',
+  )
+
+  useEffect(() => {
+    if (!open) return
+    setName(initial?.name ?? '')
+    setClientId(initial?.client_id ?? '')
+    setStatus(initial?.status ?? 'Active')
+    setPricingType(initial?.pricing_type ?? 'Fixed')
+    setBudget(initial?.budget?.toString() ?? '')
+    setEstimatedHours(initial?.estimated_hours ? initial.estimated_hours.toString() : '')
+  }, [open, initial?.id])
 
   const { data: clients = [] } = useQuery({
     queryKey: ['clients', orgId],
@@ -43,25 +97,34 @@ function ProjectDialog({ open, onClose, orgId }: { open: boolean; onClose: () =>
 
   const mutation = useMutation({
     mutationFn: upsertProject,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['projects'] }); onClose() },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['projects'] })
+      qc.invalidateQueries({ queryKey: ['projects-progress'] })
+      onClose()
+    },
   })
 
   function handleSave() {
     mutation.mutate({
+      ...(initial?.id ? { id: initial.id } : {}),
       org_id: orgId,
       name,
-      client_id: clientId,
+      client_id: clientId || null,
       status,
       pricing_type: pricingType,
       budget: parseFloat(budget) || 0,
+      estimated_hours: parseFloat(estimatedHours) || 0,
     })
   }
 
   const p = tr.projects
+  const isEdit = !!initial
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
-        <DialogHeader><DialogTitle>{p.newProject}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>{isEdit ? p.editProject : p.newProject}</DialogTitle>
+        </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1">
             <Label>{p.projectName}</Label>
@@ -74,7 +137,7 @@ function ProjectDialog({ open, onClose, orgId }: { open: boolean; onClose: () =>
           </div>
           <div className="space-y-1">
             <Label>{p.client}</Label>
-            <Select value={clientId} onValueChange={setClientId}>
+            <Select value={clientId ?? ''} onValueChange={setClientId}>
               <SelectTrigger><SelectValue placeholder={p.selectClient} /></SelectTrigger>
               <SelectContent>
                 {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
@@ -104,6 +167,17 @@ function ProjectDialog({ open, onClose, orgId }: { open: boolean; onClose: () =>
             </div>
           </div>
           <div className="space-y-1">
+            <Label>{p.estimatedHours}</Label>
+            <Input
+              type="number"
+              min="0"
+              step="0.5"
+              value={estimatedHours}
+              onChange={(e) => setEstimatedHours(e.target.value)}
+              placeholder="0"
+            />
+          </div>
+          <div className="space-y-1">
             <Label>{tr.common.status}</Label>
             <Select value={status} onValueChange={(v) => setStatus(v as Project['status'])}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -118,7 +192,9 @@ function ProjectDialog({ open, onClose, orgId }: { open: boolean; onClose: () =>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>{tr.common.cancel}</Button>
           <Button onClick={handleSave} disabled={!name.trim() || mutation.isPending}>
-            {mutation.isPending ? p.creating : p.createProject}
+            {mutation.isPending
+              ? (isEdit ? tr.common.saving : p.creating)
+              : (isEdit ? tr.common.save : p.createProject)}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -126,46 +202,14 @@ function ProjectDialog({ open, onClose, orgId }: { open: boolean; onClose: () =>
   )
 }
 
-const STATUS_COLOR: Record<Project['status'], 'default' | 'success' | 'warning' | 'secondary' | 'destructive'> = {
-  'Not Started': 'secondary',
-  Active: 'success',
-  'In Review': 'warning',
-  Stuck: 'destructive',
-  'On Hold': 'secondary',
-  Completed: 'default',
-  Cancelled: 'destructive',
-}
-
-function MiniProgress({ pct, basis }: { pct: number; basis: 'hours' | 'tasks' }) {
-  const isOver = pct > 100
-  const displayPct = Math.min(pct, 100)
-
-  return (
-    <div className="space-y-0.5 mt-2">
-      <div className="flex justify-between text-xs text-muted-foreground">
-        <span>{basis === 'hours' ? 'שעות' : 'משימות'}</span>
-        <span className={cn('font-medium', isOver && 'text-red-600')}>
-          {Math.round(pct)}%
-        </span>
-      </div>
-      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-        <div
-          className={cn(
-            'h-full rounded-full transition-all',
-            isOver ? 'bg-red-500' : pct >= 100 ? 'bg-green-500' : 'bg-primary',
-          )}
-          style={{ width: `${displayPct}%` }}
-        />
-      </div>
-    </div>
-  )
-}
-
 export default function ProjectsPage() {
   const { organization } = useAuthStore()
   const { tr } = useLang()
   const orgId = organization?.id ?? ''
+  const qc = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [editing, setEditing] = useState<Project | undefined>()
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ['projects', orgId],
@@ -179,6 +223,28 @@ export default function ProjectsPage() {
     enabled: !!orgId,
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: deleteProject,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['projects'] })
+      qc.invalidateQueries({ queryKey: ['projects-progress'] })
+      setConfirmDelete(null)
+    },
+  })
+
+  function openNew() { setEditing(undefined); setDialogOpen(true) }
+  function openEdit(e: React.MouseEvent, project: Project) {
+    e.preventDefault()
+    e.stopPropagation()
+    setEditing(project)
+    setDialogOpen(true)
+  }
+  function onDeleteClick(e: React.MouseEvent, id: string) {
+    e.preventDefault()
+    e.stopPropagation()
+    setConfirmDelete(id)
+  }
+
   const p = tr.projects
   return (
     <div className="p-6 space-y-6">
@@ -187,7 +253,7 @@ export default function ProjectsPage() {
           <h1 className="text-2xl font-bold">{p.title}</h1>
           <p className="text-muted-foreground text-sm">{projects.length} {tr.common.total}</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
+        <Button onClick={openNew}>
           <Plus className="h-4 w-4 me-2" /> {p.newProject}
         </Button>
       </div>
@@ -203,51 +269,107 @@ export default function ProjectsPage() {
           {projects.map((project) => {
             const summary = progressSummary[project.id]
             let pct = 0
-            let basis: 'hours' | 'tasks' = 'tasks'
-            if (summary && summary.estimated > 0) {
+            let progressLabel = ''
+
+            if ((project.estimated_hours ?? 0) > 0) {
+              const logged = summary?.logged ?? 0
+              pct = (logged / project.estimated_hours) * 100
+              progressLabel = `${formatHours(logged)} / ${formatHours(project.estimated_hours)}`
+            } else if (summary && summary.estimated > 0) {
               pct = (summary.logged / summary.estimated) * 100
-              basis = 'hours'
+              progressLabel = `${formatHours(summary.logged)} / ${formatHours(summary.estimated)}`
+            } else if (summary && summary.taskCount > 0) {
+              pct = (summary.doneTaskCount / summary.taskCount) * 100
+              progressLabel = `${summary.doneTaskCount}/${summary.taskCount} משימות`
             }
-            const showProgress = summary && (summary.estimated > 0 || summary.logged > 0)
+
+            const showProgress = (project.estimated_hours ?? 0) > 0
+              || (!!summary && (summary.taskCount > 0 || summary.logged > 0))
 
             return (
-              <Link key={project.id} to={`/projects/${project.id}`}>
-                <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <CardTitle className="text-base leading-tight">{project.name}</CardTitle>
-                      </div>
-                      <Badge variant={STATUS_COLOR[project.status]} className="shrink-0">
-                        {p.statuses[project.status]}
-                      </Badge>
+              <Card key={project.id} className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <Link
+                      to={`/projects/${project.id}`}
+                      className="flex items-center gap-2 flex-1 min-w-0 hover:underline"
+                    >
+                      <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <CardTitle className="text-base leading-tight truncate">{project.name}</CardTitle>
+                    </Link>
+                    <div className="flex gap-1 shrink-0">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7"
+                        onClick={(e) => openEdit(e, project)}
+                        title={tr.common.edit}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      {confirmDelete === project.id ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="h-7 px-2 text-xs"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteMutation.mutate(project.id) }}
+                          >
+                            {tr.common.delete}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-xs"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setConfirmDelete(null) }}
+                          >
+                            {tr.common.cancel}
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={(e) => onDeleteClick(e, project.id)}
+                          title={tr.common.delete}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {project.client && (
-                      <p className="text-xs text-muted-foreground">{project.client.name}</p>
-                    )}
-                    <div className="flex items-center justify-between">
-                      <Badge variant="outline">{p.pricing[project.pricing_type]}</Badge>
-                      <span className="text-sm font-semibold">
-                        {project.pricing_type === 'Fixed'
-                          ? formatCurrency(project.budget)
-                          : `${formatCurrency(project.budget)}/hr`}
-                      </span>
-                    </div>
-                    {showProgress && (
-                      <MiniProgress pct={pct} basis={basis} />
-                    )}
-                  </CardContent>
-                </Card>
-              </Link>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {project.client && (
+                    <p className="text-xs text-muted-foreground">{project.client.name}</p>
+                  )}
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge variant={STATUS_COLOR[project.status]} className="shrink-0 text-xs">
+                      {p.statuses[project.status]}
+                    </Badge>
+                    <span className="text-sm font-semibold">
+                      {project.pricing_type === 'Fixed'
+                        ? formatCurrency(project.budget)
+                        : `${formatCurrency(project.budget)}/hr`}
+                    </span>
+                  </div>
+                  <Badge variant="outline" className="text-xs">{p.pricing[project.pricing_type]}</Badge>
+                  {showProgress && <MiniProgress pct={pct} label={progressLabel} />}
+                </CardContent>
+              </Card>
             )
           })}
         </div>
       )}
 
-      <ProjectDialog open={dialogOpen} onClose={() => setDialogOpen(false)} orgId={orgId} />
+      <ProjectDialog
+        key={editing?.id ?? 'new'}
+        open={dialogOpen}
+        onClose={() => { setDialogOpen(false); setEditing(undefined) }}
+        orgId={orgId}
+        initial={editing}
+      />
     </div>
   )
 }

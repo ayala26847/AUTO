@@ -124,21 +124,23 @@ export async function deleteProject(id: string): Promise<void> {
 
 export async function fetchProjectsProgressSummary(
   orgId: string,
-): Promise<Record<string, { estimated: number; logged: number }>> {
+): Promise<Record<string, { estimated: number; logged: number; taskCount: number; doneTaskCount: number }>> {
   const [{ data: taskData }, { data: logData }] = await Promise.all([
-    supabase.from('tasks').select('project_id, estimated_hours').eq('org_id', orgId),
+    supabase.from('tasks').select('project_id, estimated_hours, status').eq('org_id', orgId),
     supabase.from('time_logs').select('project_id, hours').eq('org_id', orgId),
   ])
 
-  const result: Record<string, { estimated: number; logged: number }> = {}
+  const result: Record<string, { estimated: number; logged: number; taskCount: number; doneTaskCount: number }> = {}
 
   taskData?.forEach((t) => {
-    if (!result[t.project_id]) result[t.project_id] = { estimated: 0, logged: 0 }
+    if (!result[t.project_id]) result[t.project_id] = { estimated: 0, logged: 0, taskCount: 0, doneTaskCount: 0 }
     result[t.project_id].estimated += t.estimated_hours || 0
+    result[t.project_id].taskCount += 1
+    if (t.status === 'Done') result[t.project_id].doneTaskCount += 1
   })
 
   logData?.forEach((l) => {
-    if (!result[l.project_id]) result[l.project_id] = { estimated: 0, logged: 0 }
+    if (!result[l.project_id]) result[l.project_id] = { estimated: 0, logged: 0, taskCount: 0, doneTaskCount: 0 }
     result[l.project_id].logged += l.hours || 0
   })
 

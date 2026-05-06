@@ -318,3 +318,48 @@ $$;
 
 grant execute on function setup_workspace(text, text, text) to authenticated, anon;
 notify pgrst, 'reload schema';
+
+-- ════════════════════════════════════════════════════════════
+-- MIGRATION: Sub-tasks, estimated hours, task notes, project estimated hours
+-- Run this in Supabase SQL editor
+-- ════════════════════════════════════════════════════════════
+
+-- Tasks: add estimated_hours and inline note
+alter table tasks add column if not exists estimated_hours numeric not null default 0;
+alter table tasks add column if not exists note text;
+
+-- Projects: optional project-level hour budget (for progress bar)
+alter table projects add column if not exists estimated_hours numeric not null default 0;
+
+-- Sub-tasks table
+create table if not exists sub_tasks (
+  id              uuid primary key default uuid_generate_v4(),
+  org_id          uuid not null references organizations(id) on delete cascade,
+  task_id         uuid not null references tasks(id) on delete cascade,
+  project_id      uuid not null references projects(id) on delete cascade,
+  title           text not null,
+  estimated_hours numeric not null default 0,
+  assigned_to     uuid references users(id) on delete set null,
+  status          text not null check (status in ('Backlog','In Progress','Review','Done')) default 'Backlog',
+  created_at      timestamp with time zone default now()
+);
+
+alter table sub_tasks enable row level security;
+
+drop policy if exists "org scoped sub_tasks select" on sub_tasks;
+drop policy if exists "org scoped sub_tasks insert" on sub_tasks;
+drop policy if exists "org scoped sub_tasks update" on sub_tasks;
+drop policy if exists "org scoped sub_tasks delete" on sub_tasks;
+
+create policy "org scoped sub_tasks select" on sub_tasks for select using (org_id = get_my_org_id());
+create policy "org scoped sub_tasks insert" on sub_tasks for insert with check (org_id = get_my_org_id());
+create policy "org scoped sub_tasks update" on sub_tasks for update using (org_id = get_my_org_id());
+create policy "org scoped sub_tasks delete" on sub_tasks for delete using (org_id = get_my_org_id());
+
+grant all on sub_tasks to anon, authenticated;
+
+-- Time logs: sub_task_id for granular tracking
+alter table time_logs add column if not exists sub_task_id uuid references sub_tasks(id) on delete set null;
+
+-- Active timers: sub_task_id
+alter table active_timers add column if not exists sub_task_id uuid references sub_tasks(id) on delete set null;

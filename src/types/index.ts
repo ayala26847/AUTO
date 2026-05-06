@@ -35,12 +35,13 @@ export interface Lead {
 export interface Project {
   id: string
   org_id: string
-  client_id: string
+  client_id: string | null
   name: string
   status: 'Not Started' | 'Active' | 'In Review' | 'Stuck' | 'On Hold' | 'Completed' | 'Cancelled'
   stage?: 'Not Started' | 'In Progress' | 'Done' | 'Cancelled'
   pricing_type: 'Hourly' | 'Fixed'
   budget: number
+  estimated_hours: number
   description?: string
   created_at: string
   client?: Client
